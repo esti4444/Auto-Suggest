@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+	
+	<title>
+			Text Editor
+			</title>
+	<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+	<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+		<meta property="og:title" content="Text Editor">
+	<meta property="og:type" content="website">
+<style>@font-face {
+	font-family: "wticons";
+	src: url("data:font/woff2;charset=utf-8;base64,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") format("woff2");
+}
+
+.wticons {
+	line-height: 1;
+}
+
+.wticons:before {
+	font-family: wticons !important;
+	font-style: normal;
+	font-weight: normal !important;
+	vertical-align: top;
+}
+
+.wticon-account:before {
+	content: "\f101";
+}
+.wticon-add:before {
+	content: "\f102";
+}
+.wticon-casual:before {
+	content: "\f103";
+}
+.wticon-check:before {
+	content: "\f104";
+}
+.wticon-chevron:before {
+	content: "\f105";
+}
+.wticon-copy:before {
+	content: "\f106";
+}
+.wticon-dismiss:before {
+	content: "\f107";
+}
+.wticon-error:before {
+	content: "\f108";
+}
+.wticon-expand:before {
+	content: "\f109";
+}
+.wticon-feedback:before {
+	content: "\f10a";
+}
+.wticon-find:before {
+	content: "\f10b";
+}
+.wticon-formal:before {
+	content: "\f10c";
+}
+.wticon-grayLogo:before {
+	content: "\f10d";
+}
+.wticon-info:before {
+	content: "\f10e";
+}
+.wticon-leftChevron:before {
+	content: "\f10f";
+}
+.wticon-logo:before {
+	content: "\f110";
+}
+.wticon-love:before {
+	content: "\f111";
+}
+.wticon-paste:before {
+	content: "\f112";
+}
+.wticon-pin:before {
+	content: "\f113";
+}
+.wticon-premium:before {
+	content: "\f114";
+}
+.wticon-premiumDetail:before {
+	content: "\f115";
+}
+.wticon-premiumFull:before {
+	content: "\f116";
+}
+.wticon-refine:before {
+	content: "\f117";
+}
+.wticon-rewrite:before {
+	content: "\f118";
+}
+.wticon-rightChevron:before {
+	content: "\f119";
+}
+.wticon-sentenceExamples:before {
+	content: "\f11a";
+}
+.wticon-shorten:before {
+	content: "\f11b";
+}
+.wticon-unlock:before {
+	content: "\f11c";
+}
+.wticon-warn:before {
+	content: "\f11d";
+}
+.wticon-x:before {
+	content: "\f11e";
+}
+</style></head>
+<body class="app" data-editable="true" data-new-gr-c-s-check-loaded="14.994.0" data-gr-ext-installed="">
+	<header>
+	<div class="header">
+		<div class="header-inner" data-page-editable="true">
+			<div class="title">
+					Text Editor 🤗
+			</div>
+				<div class="toolbar">
+					<div class="toolbar-el">
+						Trigger autocomplete using <kbd>tab</kbd>
+					</div>
+					<div class="toolbar-el">
+						Select suggestion <kbd>↑</kbd> <kbd>↓</kbd> and <kbd>enter</kbd>
+					</div>
+					<div class="toolbar-el">
+						Cancel suggestion <kbd>esc</kbd>
+					</div>
+				</div>
+		</div>
+		<div class="rightbar">
+					<!--a href="https://transformer.huggingface.co/doc/distil-gpt2#" class="js-save">Save &amp; Publish <img src="static/icon-publish.svg"></a-->
+					<a class="js-save">Save &amp; Publish <img src="static/icon-publish.svg"></a>
+		</div>
+	</div>
+	<div class="ruler"></div>
+</header>
+
+<div class="page-wrapper">
+	<div class="page-container">
+		
+		
+		<div class="page-inner">
+			<div class="ql-toolbar"><span class="ql-formats"></span></div>
+			<div class="editor ql-container">
+				<div class="ql-editor" data-gramm="false" contenteditable="true"></div>
+				<div class="ql-clipboard" contenteditable="true" tabindex="-1"></div>
+				<div class="ql-mention-list-container" style="display: none; position: absolute;"><ul class="ql-mention-list"></ul></div>
+				<div class="js-loader hide" src="static/tail-spin.svg"></div>
+				<div class="js-share share-screenshot fadeout hide" data-html2canvas-ignore=""></div>
+			</div>
+		</div>
+	</div>
+</div>
+
+	<div class="decoder-settings" hidden>
+		<div class="title">
+			Model &amp; decoder settings
+			<a target="_blank" href="https://github.com/huggingface/transformers">
+				<img src="static/Icon-info.svg">
+			</a>
+		</div>
+		
+		<div class="setting model_size">
+				<div class="desc">
+					<span>Model size</span><span class="js-val green">distilgpt2/small</span>
+				</div>
+			
+				<input class="slider" type="range" step="1" min="0" max="3" value="0" data-value-0="distilgpt2/small" data-value-1="gpt2/small" data-value-2="gpt2/medium" data-value-3="gpt2/large">
+		</div>
+			<div class="setting top_p">
+				<div class="desc">
+					<span>Top-p</span><span class="js-val green">0.9</span>
+				</div>
+				<input class="slider js-inverted" type="range" step="any" min="0" max="1" value="0.9">
+			</div>
+			<div class="setting temperature">
+				<div class="desc">
+					<span>Temperature</span><span class="js-val orange">1</span>
+				</div>
+				<input class="slider" type="range" step="any" min="0" max="3" value="1">
+			</div>
+		
+			<div class="setting max_time">
+				<div class="desc">
+					<span>Max time</span><span class="js-val green">1</span>
+				</div>
+				<input class="slider" type="range" step="0.1" min="1" max="5" value="1">
+			</div>
+	</div>
+
+<div class="modal hide share-screenshot" hidden>
+	<div class="modal-inner">
+		<div class="modal-content">
+			<p>From desktop:</p>
+			<ol>
+				<li>Right-click on your completion below and select "<strong>Copy Image</strong>".</li>
+				<li>To share on Twitter, start a tweet and paste the image.</li>
+			</ol>
+			<p>From mobile:</p>
+			<ol>
+				<li>Press and hold (long press) your completion below and either "<strong>Share</strong>" directly or "<strong>Copy Image</strong>".</li>
+				<li>If you copied the image, you can long press in Twitter to paste it into a new tweet.</li>
+			</ol>
+		</div>
+		<img class="js-loader big" src="static/oval.svg">
+		<img class="js-result">
+		<div class="buttons">
+			<a href="https://transformer.huggingface.co/doc/distil-gpt2#" class="js-close">Done</a>
+		</div>
+	</div>
+</div>
+
+	<div class="modal hide save-publish" hidden>
+		<div class="modal-inner">
+			<div class="modal-content">
+				<div class="modal-title">Save &amp; Publish</div>
+				<div>Your document will be shared at this url:</div>
+				<input readonly="" type="text" class="doc-url" value="https://transformer.huggingface.co/share/OzdEAzHMqn">
+				<div>To be able to edit this document in the future, keep this url:</div>
+				<input readonly="" type="text" class="doc-url doc-edit-url" value="https://transformer.huggingface.co/doc/distil-gpt2/mJdukprFcWAvTDGSlbXLoORU/edit">
+				<div class="descr-doc-title">Title</div>
+				<form>
+					<input required="" type="text" class="doc-title" placeholder="Enter your document’s title..." value="">
+				</form>
+			</div>
+			<img class="js-loader hide" src="static/oval.svg">
+			<div class="buttons">
+				<a href="https://transformer.huggingface.co/doc/distil-gpt2#" class="js-save">Save</a>
+			</div>
+		</div>
+	</div>
+	
+	<script src="static/github-buttons.js.download"></script>
+	<script src="static/quill.js.download"></script>
+	<script src="static/st.js"></script>
+
+</body></html>
