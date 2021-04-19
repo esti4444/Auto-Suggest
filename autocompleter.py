@@ -145,6 +145,7 @@ class Autocompleter:
     def predict(self, text, temp=TEMPERATURE, length=MAX_LEN):
         # Tokenize the input string
         # print("Input:\n" + 100 * '+' + '\n' + text)
+        orig_text = text
         text = clean_text(text)
         print("Input Clean:" + text)
         if text == None or text == "":
@@ -227,9 +228,12 @@ class Autocompleter:
                 k = str(i) +' '+ opt[i-1] +' '+ str(options[opt[i-1]][0]) +' '+ opt[i] +' '+ str(options[opt[i]][0])
                 assert (not invalid), k
 
-        # add space on left
+        # add space on left if needed
         for i in range(len(opt)):
-            opt[i] = " " + opt[i].lstrip()
+            if orig_text.endswith(' '):
+                opt[i] = opt[i].lstrip()
+            elif not opt[i].startswith(' '):
+                opt[i] = " " + opt[i].lstrip()
         return best_option, best_delta, opt[:3]
 
 

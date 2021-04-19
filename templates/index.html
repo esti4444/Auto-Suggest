@@ -114,8 +114,40 @@
 .wticon-x:before {
 	content: "\f11e";
 }
+
+.toolbar.hidden {
+	display: none;
+}
+
+.char-count {
+	display: inline-block;
+	padding-right: 10px;
+	color: #aaa;
+  font-size: .8em;
+}
+
+.char-count.good {
+	color: rgb(0, 177, 59);
+}
+
 </style></head>
-<body class="app" data-editable="true" data-new-gr-c-s-check-loaded="14.994.0" data-gr-ext-installed="">
+
+<script>
+	function onDocLoad() {
+		window.completionEnabled = true;
+		var params = new URLSearchParams(document.location.search);
+		if (params.has('no-auto-complete')) {
+			document.querySelector('.toolbar').classList.add('hidden');
+			window.completionEnabled = false;
+		}
+		window.appUserId = params.get('userid');
+		if (!window.appUserId) alert('Missing user ID');
+		if (!window.appUserId) throw new Error("missing user id");
+		// console.log('Document loaded:', params.toString());
+	}
+</script>
+
+<body onload="onDocLoad()" class="app" data-editable="true" data-new-gr-c-s-check-loaded="14.994.0" data-gr-ext-installed="">
 	<header>
 	<div class="header">
 		<div class="header-inner" data-page-editable="true">
@@ -124,19 +156,18 @@
 			</div>
 				<div class="toolbar">
 					<div class="toolbar-el">
-						Trigger autocomplete using <kbd>tab</kbd>
-					</div>
-					<div class="toolbar-el">
 						Select suggestion <kbd>↑</kbd> <kbd>↓</kbd> and <kbd>enter</kbd>
 					</div>
 					<div class="toolbar-el">
-						Cancel suggestion <kbd>esc</kbd>
+						Close suggestions <kbd>esc</kbd>
 					</div>
 				</div>
 		</div>
 		<div class="rightbar">
 					<!--a href="https://transformer.huggingface.co/doc/distil-gpt2#" class="js-save">Save &amp; Publish <img src="static/icon-publish.svg"></a-->
-					<a class="js-save">Save &amp; Publish <img src="static/icon-publish.svg"></a>
+					<a class="js-shuffle js-trigger" style="display:none">disabled-btns</a> <!-- TODO[dvs]: used to supress errors -->
+					<div class='char-count'><span class="cur-chars">-</span>/<span class="min-chars">-</span></div>
+					<a class="js-submit" href="">Submit <img src="static/icon-publish.svg"></a>
 		</div>
 	</div>
 	<div class="ruler"></div>

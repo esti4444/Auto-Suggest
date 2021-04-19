@@ -454,7 +454,7 @@ body.app header div.header .header-inner[data-page-editable="false"] {
 }
 body.app header div.header .rightbar {
   float: right;
-  margin-top: 14px;
+  margin-top: 23px;
   font-size: 14px;
 }
 body.app header div.header .rightbar a img {
@@ -657,9 +657,9 @@ div.editor a.share-screenshot:hover {
 }
 .page-inner strong {
   font-weight: 400;
-  border-radius: 6px;
-  background-color: #D3E1EB;
-  padding: 3px 1px;
+  /* border-radius: 6px; */
+  /* background-color: #D3E1EB; */
+  /* padding: 3px 1px; */
 }
 .page-inner.html2canvas strong {
   font-weight: 600;

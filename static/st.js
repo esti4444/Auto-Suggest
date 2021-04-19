@@ -1,11 +1,17 @@
 !(function () {
     "use strict";
     const A = console;
+    var selections = [];
+    var suggestions = [];
+    var canceled = false;
 
     // TODO: Configurable defaults
     const TAB_ENABLED = true;
-    const DEBOUNCE_DELAY_MILLIS = 500;
-    var canceled = false;
+    const DEBOUNCE_DELAY_MILLIS = 1000;
+    const MIN_TEXT_LENGTH = 100;
+    const REPORT_SELECTIONS_ON_SUBMIT = true;
+    const ENDPOINT = "http://127.0.0.1:5000"
+    const COMPLETION_MSG = "Thank you!\nText was submitted. Please return to system to complete the survey"
 
     function debounce(func, wait, immediate) {
         var timeout;
@@ -26,16 +32,45 @@
         f();
     }, DEBOUNCE_DELAY_MILLIS);
 
-
     class e {
         path(A) {
             return `${e.ENDPOINT}/${A}`;
         }
+
         async postAutocomplete(A) {
             const e = this.path(`autocomplete`),
                 t = await fetch(e, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(A) });
             return await t.json();
+
         }
+
+        async postSubmission(text) {
+            canceled = true;
+            const p = this.path(`submit`),
+                t = await fetch(p, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(
+                    {
+                        userid: window.appUserId,
+                        completionEnabled: window.completionEnabled,
+                        text: text,
+                        timestamp: new Date().getTime(),
+//                        selections: selections,
+                        suggestions: suggestions
+                    })});
+
+//            const data = await t.json();
+//            if (data.status == "error"){
+//                alert("Save Error");
+//            }else{
+//                selections = [];
+//                suggestions = [];
+//                a.setText('');
+//                alert(COMPLETION_MSG);
+//            }
+//            return 'ok'
+            return await t.json();
+
+        }
+
         async postWithSettings(A) {
             const e = document.querySelector(".decoder-settings .setting.model_size .js-val").textContent || void 0,
                 t = (A) => {
@@ -52,7 +87,8 @@
                 c = t(".decoder-settings .setting.max_time .js-val"),
                 l = (document.querySelector(".decoder-settings input[name=bow_or_discrim]:checked") || {}).value,
                 Q = (document.querySelector(".decoder-settings input[name=use_sampling]") || {}).checked;
-            return this.postAutocomplete({ ...A, model_size: e, top_p: r, temperature: n, step_size: s, kl_scale: i, gm_scale: o, num_iterations: B, gen_length: a, max_time: c, bow_or_discrim: l, use_sampling: Q });
+//            return this.postAutocomplete({ ...A, model_size: e, top_p: r, temperature: n, step_size: s, kl_scale: i, gm_scale: o, num_iterations: B, gen_length: a, max_time: c, bow_or_discrim: l, use_sampling: Q });
+                return this.postAutocomplete({ ...A, userid: window.appUserId , timestamp: new Date().getTime() ,model_size: e, top_p: r, temperature: n, step_size: s, kl_scale: i, gm_scale: o, num_iterations: B, gen_length: a, max_time: c, bow_or_discrim: l, use_sampling: Q });
         }
         async postEdit(A) {
             const e = window.doc;
@@ -71,7 +107,7 @@
     }
     //(e.ENDPOINT = "https://transformer.huggingface.co"), (e.shared = new e());
     //(e.ENDPOINT = "http://f7e0189baf6d.ngrok.io/"), (e.shared = new e());
-    (e.ENDPOINT = "http://127.0.0.1:5000"), (e.shared = new e());
+    (e.ENDPOINT = ENDPOINT), (e.shared = new e());
     class t {
         constructor(A) {
             (this.quill = A),
@@ -128,8 +164,14 @@
                         }, 0);
                 });
                 this.quill.focus();
+                setTimeout(() => {
+                    this.quill.setText('');
+                }, 0);
         }
         selectHandler() {
+            this.postAutocompleteSelection(this.getItemData()).then(result => {
+                // console.log('selection submission result:', result);
+            });
             return !this.isOpen || (this.selectItem(), !1);
         }
         escapeHandler() {
@@ -187,7 +229,23 @@
             const e = Number(A.target.dataset.index);
             t.numberIsNaN(e) || e === this.itemIndex || ((this.itemIndex = e), this.highlightItem(!1));
         }
+        path(A) {
+            return `${e.ENDPOINT}/${A}`;
+        }
+        async postAutocompleteSelection(A) {
+            if (REPORT_SELECTIONS_ON_SUBMIT) {
+                selections.push({time: new Date().getTime(), selection: this.getItemData() });
+                suggestions[suggestions.length-1].accepted = (this.getItemData().index + 1)
+            } else {
+                const p = this.path(`autocomplete-selection`),
+                    t = await fetch(p, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userid: window.appUserId, selection: this.getItemData()})});
+                return await t.json();
+            }
+        }
         onItemClick(A) {
+            this.postAutocompleteSelection(this.getItemData()).then(result => {
+                // console.log('selection submission result:', result);
+            });
             A.stopImmediatePropagation(), A.preventDefault(), (this.itemIndex = Number(A.currentTarget.dataset.index)), this.highlightItem(), this.selectItem();
         }
         attachDataValues(A, e) {
@@ -273,6 +331,15 @@
             this.hideMentionList();
         }
         onTextChange(A, e, t) {
+            canceled = false;
+            document.querySelector('.min-chars').innerHTML = MIN_TEXT_LENGTH;
+            var curLength = this.quill.editor.getText(0, Number.MAX_VALUE).length;
+            document.querySelector('.cur-chars').innerHTML = '' + curLength;
+            if (curLength < MIN_TEXT_LENGTH) {
+                document.querySelector('.char-count').classList.remove('good');
+            } else {
+                document.querySelector('.char-count').classList.add('good');
+            }
             "user" === t && this.onSomethingChange();
         }
         onSelectionChange(A) {
@@ -5389,15 +5456,20 @@
                     A.select();
                 });
             this.saveBtn.addEventListener("click", (A) => {
-                A.preventDefault(), this.form.reportValidity() && this.save();
+                A.preventDefault(), this.reportValidity() && this.save();
             }),
                 this.form.addEventListener("submit", (A) => {
+                    this.hideMentionList();
                     A.preventDefault(), this.saveBtn.click();
                 });
         }
         async performBeforeShow() {}
         async performShow() {}
         async performHide() {}
+        async reportValidity() {
+            alert("At least ? characters must be entered");
+            return false;
+        }
         async save() {
             this.loader.classList.remove("hide");
             const t = this.div.querySelector(".doc-title").value,
@@ -5423,6 +5495,7 @@
                 mainInfoBtn: document.querySelector("header .title .info"),
                 shareBtn: document.querySelector("header .js-share"),
                 saveBtn: document.querySelector("header .js-save"),
+                submitBtn: document.querySelector("header .js-submit"),
                 duplicateBtn: document.querySelector("header .js-duplicate"),
             },
             shareScreenBtn: document.querySelector(".page-container .js-share"),
@@ -5461,30 +5534,54 @@
             // esti
             a.on('text-change', function(delta, oldDelta, source) {
                 if (source == 'user') {
-                    console.log("A user action triggered this change.");
-                    canceled = true;
+                    // console.log("A user action triggered this change.");
+                    canceled = false;
                     _s.loaderEditor.classList.add("hide");
-                    triggerPredictions(() => {
-                      Q();
+                        triggerPredictions(() => {
+                        Q();
                     });
                 }
             });
             if (TAB_ENABLED) {
                 a.keyboard.addBinding({ key: t.Keys.TAB }, () => {
+                    canceled = false;
                     Q();
                 }),
                 a.keyboard.bindings[t.Keys.TAB].unshift(a.keyboard.bindings[t.Keys.TAB].pop());
             }
+        const submit = async () => {
+            canceled = true;
+            console.log('DEBUG:',e.shared);
+            const text = a.editor.getText(0, Number.MAX_VALUE);
+            console.log('Submitting...', text);
+            if (text.length < MIN_TEXT_LENGTH) {
+                alert('Too short - at least ' + MIN_TEXT_LENGTH + ' characters required');
+            } else {
+                e.shared.postSubmission(a.editor.getText(0, Number.MAX_VALUE));
+                selections = [];
+                suggestions = [];
+                a.setText('');
+                alert(COMPLETION_MSG);
+            }
+        };
         const Q = async () => {
+            if (canceled || !window.completionEnabled) {
+                return;
+            }
             c.setCursorPos();
             const t = a.getBounds(c.getCursorPos());
             (_s.loaderEditor.style.top = `${t.top - 4}px`), (_s.loaderEditor.style.left = `${t.left + 4}px`), _s.loaderEditor.classList.remove("hide");
             const r = a.getText(0, c.getCursorPos());
-            A.debug("%c[About to launch autocomplete for]", "color: green;", r);
-            const n = await e.shared.postWithSettings({ context: r });
-            _s.loaderEditor.classList.add("hide");
-            for (const e of n.sentences) A.log(e.value);
-            c.trigger(n.sentences.map((A) => A.value));
+            // TODO[dvs]: suppressed logging - A.debug("%c[About to launch autocomplete for]", "color: green;", r);
+            if (r != "") {
+                const n = await e.shared.postWithSettings({ context: r });
+                _s.loaderEditor.classList.add("hide");
+                // TODO[dvs]: suppressed logging - for (const e of n.sentences) A.log(e.value);
+                if (REPORT_SELECTIONS_ON_SUBMIT) {
+                    suggestions.push({userid: window.appUserId, timestamp: new Date().getTime(), input: r, option1: n.sentences[0].value, option2: n.sentences[1].value, option3: n.sentences[2].value, accepted: -1 });
+                    c.trigger(n.sentences.map((A) => A.value));
+                }
+            }
         };
         if (
             (null === (n = _s.header.duplicateBtn) ||
@@ -5501,6 +5598,9 @@
         _s.header.shuffleBtn.addEventListener("click", (A) => {
             A.preventDefault(), a.setText(r.randomItem(xs)), a.setSelection(a.getLength(), 0), Q();
         }),
+            _s.header.submitBtn.addEventListener("click", (A) => {
+                A.preventDefault(), submit(); // TODO[dvs]: implement submit
+            }),
             _s.header.triggerBtn.addEventListener("click", (A) => {
                 A.preventDefault(), Q();
             }),
