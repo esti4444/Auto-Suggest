@@ -3,13 +3,12 @@ from transformers import AutoTokenizer, AutoModelForCausalLM
 from time import time
 import torch
 import re
-import pandas as pd
 
 # configuration
 MAX_LEN = 3
 MIN_LEN = 2
 NUM_RETURN_SEQUENCES = 3
-TEMPERATURE = 0.7  # 1 is default
+TEMPERATURE = 0.7  # language model temperature. 1 is hugginface default
 
 
 def timing(msg, start_time):
@@ -25,14 +24,6 @@ def clean_text(input_string):
 
     return clean
 
-# def delta_text(orig, generated):
-#     print("\nin delta - orig:", orig)
-#     print("\nin delta - generated:", generated)
-#     s = re.sub('^' + orig, '', generated)
-#     print("\ndelta2:", s)
-#     s = "".join(s.rstrip().lstrip())
-#     print("delta2:", s)
-#     return s
 
 def delta_text(orig, generated):
     index = generated.find(orig)
@@ -44,7 +35,6 @@ def delta_text(orig, generated):
     else:
         return ""
 
-#-------------------------------------------------end utils--------------------------
 
 class Autocompleter:
 
@@ -53,39 +43,14 @@ class Autocompleter:
         self.load()
 
     def load(self):
-        # weights = []
-        # if model_type == 1:
-        #     model_file = model1_path
-        # else:
-        #     model_file = model2_path
-        # if os.path.exists(model_file):
-        #     with open(model_file, 'rb') as f:
-        #         model = pickle.load(f)
-        #         weights = model.weights
-        #         self.t("---------  Load Model from PKL done-----------")
-        #         model.train(weights)
-        #         self.t("---------  Train Done -----------")
-        # else:
-        #     model = Model_MEMM()
-        #     self.t("---------  Model created -----------")
-        #     model.load_data()
-        #     self.t("---------  Load Done -----------")
-        #     model.train(weights)
-        #     self.t("---------  Train Done -----------")
-        # self.t("---------  Load Model {} -----------".format(self.model_type))
-        start = time()
-        # tokenizer_kwargs = {"bos_token": "<|startoftext|>", "eos_token": "<|endoftext|>", "pad_token": "<|pad|>"}
-        # self.tokenizer = AutoTokenizer.from_pretrained(self.model_type, **tokenizer_kwargs)
-        # self.model = AutoModelForCausalLM.from_pretrained(self.model_type, pad_token_id=self.tokenizer.eos_token_id, output_hidden_states=True)
 
-        #device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+        start = time()
+        # load pretrained model
         self.tokenizer = AutoTokenizer.from_pretrained(self.model_type)
         self.model = AutoModelForCausalLM.from_pretrained(self.model_type, output_hidden_states=True)
-        #self.model.to(device)
         timing("---------  Load Model Done {} -----------".format(self.model_type), start)
-        # self.t("---------  test -----------")
-        #         model.train(weights)
-        #         self.t("---------  Train Done -----------")
+
+        # search types configuration
         self.search_config = {
             'BEAM':{
                 'temperature':TEMPERATURE,
@@ -111,31 +76,25 @@ class Autocompleter:
         }
 
     def get_scores(self, generated_outputs, input_shape):
-        # only use id's that were generated
-        # gen_sequences has shape [3, 15]
+
         gen_sequences = generated_outputs.sequences[:, input_shape:]
 
-        # let's stack the logits generated at each step to a tensor and transform
-        # logits to probs
+        # stack the logits generated at each step to a tensor and transform logits to probs
         probs = torch.stack(generated_outputs.scores, dim=1).softmax(-1)  # -> shape [3, 15, vocab_size]
 
-        # now we need to collect the probability of the generated token
-        # we need to add a dummy dim in the end to make gather work
+        # sum the probability of the generated token (add a dummy dim in the end to make gather work)
         gen_probs = torch.gather(probs, 2, gen_sequences[:, :, None]).squeeze(-1)
 
-        # now we can do all kinds of things with the probs
-
-        # 1) the probs that exactly those sequences are generated again
-        # those are normally going to be very small
+        # sequences probs in whole model (very small values)
         unique_prob_per_sequence = gen_probs.prod(-1)
 
-        # 2) normalize the probs over the three sequences
+        # normalize probs over the three sequences
         normed_gen_probs = gen_probs / gen_probs.sum(0)
         # print("normalized sum:", float(normed_gen_probs[:, 0].sum()))
         check_norm = float(normed_gen_probs[:, 0].sum())
         assert  check_norm > 0.999 and check_norm < 1.001, "probs should be normalized"
 
-        # 3) compare normalized probs to each other like in 1)
+        # compare normalized probs to each other
         unique_normed_prob_per_sequence = normed_gen_probs.prod(-1)
         scores = unique_normed_prob_per_sequence/ unique_normed_prob_per_sequence.sum()
 
@@ -150,34 +109,30 @@ class Autocompleter:
         print("Input Clean:" + text)
         if text == None or text == "":
             return "", "", ["", "", ""]
-        # print("temp len: " + str(temp) + " " + str(length))
+
         input = self.tokenizer.encode(text, return_tensors="pt")
         decoded_input = self.tokenizer.decode(input[0], skip_special_tokens=True)
-        # len1 = len(input[0])
-        # len1 += max_len
         max_length = input.shape[1] + length
         min_length = input.shape[1] + MIN_LEN
-        # search_config = ['SAMPLE', 'BEAM']
         highest_score = 0.0
         best_option = ""
         best_delta = ""
         del_len = 0
         options = {}
-        # highest_score_raw = 0.0
-        # best_delta_raw = ""
-        # best_raw_prob = ""
+
         for config in self.search_config.keys():
             start = time()
             args = self.search_config[config]
             args['temperature'] = temp
             args['max_length'] = max_length
             args['min_length'] = min_length
-            # Esti
-            # problem with transformers 4.3.  use 4.2
+
+            # Note: issue with transformers 4.3.  use 4.2
             # conda install -c huggingface transformers==4.2.0
             outputs = self.model.generate(input, **args)
             print("Output {}:\n".format(config) + 100 * '-')
             scores, scores_norm, raw_prob = self.get_scores(outputs, input.shape[-1])
+
             for i, output in enumerate(outputs.sequences):
                 gen = self.tokenizer.decode(output, skip_special_tokens=True)
                 # print("\nfrom decode:", gen)
@@ -188,7 +143,6 @@ class Autocompleter:
                 delta_len = len(delta.split())
                 s2 = text + " ---- " + generated_txt
                 assert(delta_len < MAX_LEN + 1), s2
-                # print("{}: {}".format(scores_norm[i], delta))
                 print("{}: {} --> {}, {}".format(scores_norm[i], delta, scores[i], raw_prob[i]))
                 # set all options
                 if (delta != "") and delta not in options:
@@ -200,18 +154,10 @@ class Autocompleter:
                     best_delta = delta
                     del_len = delta_len
             timing("---------  Predict {} -----------".format(config), start)
-        #             best_raw = raw_prob[i]
-        #         if (delta != "") and (float(raw_prob[i]) > highest_score_raw):
-        #             highest_score_raw = float(raw_prob[i])
-        #             best_delta_raw = delta
-        #     timing("---------  Predict {} -----------".format(config), start)
-        # if highest_score_raw > best_raw:
-        #     print("best option by raw: ", best_delta_raw)
 
         # assert (best_delta != ""), decoded_input + '-->' + generated_txt
 
         # sort options by prob
-        # opt = [k for k, v in sorted(options.items(), key=lambda item: item[1], reverse=True)]
         opt = sorted(options, key=lambda k: (options[k][1], options[k][0]), reverse= True)
         num_of_options = len(opt)
         # add empty values if less than 3 options returned
@@ -219,7 +165,7 @@ class Autocompleter:
             opt.append("")
         print("Best Delta:\n" + 50 * '@' + 'XXX  ' + best_delta + " len " + str(del_len))
         print("3 options:\n" + 50 * '@' + 'XXX  ' + ' '.join(map(str, opt[:3])))
-        # k = str(options[opt[0]][0]) + ' ' + str(options[opt[1]][0]) + ' ' + str(options[opt[2]][0])
+
         for i in range(min(len(options), 3)):
             if i>0:
                 # check that prior option has higher prob AND its within the same search type
@@ -228,7 +174,7 @@ class Autocompleter:
                 k = str(i) +' '+ opt[i-1] +' '+ str(options[opt[i-1]][0]) +' '+ opt[i] +' '+ str(options[opt[i]][0])
                 assert (not invalid), k
 
-        # add space on left if needed
+        # handle spaces: add space on left to the suggested option if needed
         for i in range(len(opt)):
             if orig_text.endswith(' '):
                 opt[i] = opt[i].lstrip()
@@ -237,12 +183,9 @@ class Autocompleter:
         return best_option, best_delta, opt[:3]
 
 
-
+# for testing ------------------------------------------------------------------------------------------------------
 def iterate_text(session_text):
     text = input("Enter text: \n")
-    # text = input("Enter text: ")
-    # temp = input("Enter temp: ")
-    # len = input("Enter len: ")
     if text == "Q":
         return "Q"
     elif text == "S":
@@ -305,9 +248,6 @@ if __name__ == "__main__":
     # logits = outputs.logits
 
 
-
-
-
 #-------------------   No recalc attention
 #-https://huggingface.co/transformers/quickstart.html#using-the-past
 # from transformers import GPT2LMHeadModel, GPT2Tokenizer
@@ -335,25 +275,6 @@ if __name__ == "__main__":
 
 #------- use cache in model foward:
 # use_cache=False,
-
-
-
-# ---- cleaning text
-# import re
-# # function for # regex to clean unnecessary chars
-# def cleaning_text(text):
-#     # remove everything except alphabets and also @,#
-#     text = re.sub("[^a-zA-Z]"," ",text)
-#     text = re.sub('[!@#$_]', '', text)
-#     text = text.replace("co","")
-#     text = text.replace("http","")
-#     # remove whitespaces
-#     text = ' '.join(text.split())
-#     # convert text to lowercase
-#     text = text.lower()
-#     return text
-# #Apply the above cleaning function to the Tweets column
-# sub_df['Tweets_cleaned'] = sub_df['Tweets'].apply(lambda x: cleaning_text(x))
 
 
 #  --- fine tine

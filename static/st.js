@@ -7,7 +7,7 @@
 
     // TODO: Configurable defaults
     const TAB_ENABLED = true;
-    const DEBOUNCE_DELAY_MILLIS = 1000;
+    const DEBOUNCE_DELAY_MILLIS = 1500;
     const MIN_TEXT_LENGTH = 100;
     const REPORT_SELECTIONS_ON_SUBMIT = true;
     const ENDPOINT = "http://127.0.0.1:5000"
