@@ -1,4 +1,8 @@
-# utility for generating CSV and HTML view of selected user session, highlighting the suggestions positions and accepted text
+"""
+User session analytics
+Create HTML view for a user session - request points in text, the suggested text options, accepted or not indication
+Accepted text suggestions are highlighted in the full text display
+"""
 
 import pandas as pd
 import os
@@ -12,16 +16,21 @@ SESSIONS_CSV = "./logs/all_sessions.csv"
 today = datetime.datetime.today().strftime('%Y%m%d')
 
 def convert_timestamp(timestamp):
-    # try:
-    #     # when timestamp is in seconds
-    #     date = datetime.datetime.fromtimestamp(timestamp)
-    # except (ValueError):
-    # when timestamp is in miliseconds
+    """
+    timestampe formatting
+    :param timestamp:
+    :return:
+    """
     date = datetime.datetime.fromtimestamp(timestamp / 1000)
     return date
 
-# generate csv and html files with session text and suggestions
 def extract_user_suggestions(userid, filename):
+    """
+    Generate csv and html files with user session details and given suggestions
+    :param userid:
+    :param filename:
+    :return:
+    """
     if os.path.exists(filename):
         try:
             df_all_sessions = pd.read_csv(filename)
@@ -49,11 +58,15 @@ def extract_user_suggestions(userid, filename):
         print(e)
         return
 
-
-# find substring within a string (both in list representation)
-# returns tuple (start idx, end idx) where substring exist in list.
-# for example: find_sub_list(['my','name','is'], ['hello','my','name','is','bob'])
 def find_sub_list(sl,l):
+    """
+    Find substring within a string (both in list representation)
+    returns tuple (start idx, end idx) where substring exist in list.
+    for example: find_sub_list(['my','name','is'], ['hello','my','name','is','bob'])
+    :param sl:
+    :param l:
+    :return:
+    """
     results=[]
     sll=len(sl)
     k = (i for i,e in enumerate(l) if e==sl[0])
@@ -62,28 +75,50 @@ def find_sub_list(sl,l):
         if l[ind:ind+sll]==sl:
             results.append((ind,ind+sll-1))
     # error if sub string is not found
-    assert len(results)>0, "failed to find substring: " + str(sl) + ' ' + str(l)
+    # assert len(results)>0, "failed to find substring: " + str(sl) + ' ' + str(l)
+    if len(results) == 0:
+        return ()
     # return the first substring found
     return results[0]
 
-# Prevent special characters like & and < to cause the browser to display something other than what you intended.
 def html_escape(text):
+    """
+    Prevent special characters like & and < to cause the browser to display something other than what intended
+    :param text:
+    :return:
+    """
     return html.escape(text)
 
 def remove_punctuation(s):
+    """
+    Remove punctuation from string
+    :param s:
+    :return:
+    """
     punctuation = set(string.punctuation)
     s = ''.join(ch for ch in s if ch not in punctuation)
     return s
 
-# get the word positions in text where suggestion was given (by the len of the input text of each request)
 def get_suggest_positions(df):
+    """
+    Get the word positions in text where suggestion was given (by the len of the input text of each request)
+    :param df:
+    :return:
+    """
     stops_pos = []
     for row_no, row in df.iterrows():
         stops_pos.append(len(row["input"].split())-1)
     return stops_pos[:-1]
 
-# generate HTML highlighting the suggested points and the accepted text
-def save_HTML(full_text, df, userid):
+def save_HTML(full_text, df, userid, mode='prod'):
+    """
+    Generate HTML highlighting the suggested points and the accepted text
+    :param full_text:
+    :param df:
+    :param userid:
+    :param mode: prod/test/compare  (production or test doc, or comparison of docs)
+    :return:
+    """
     USER_HTML_FILE = "./logs/user_session/user_suggestions_" + str(userid) + "_" + today + ".HTML"
     # add full text as the last line to df
     data = dict(userid = userid, timestamp= datetime.datetime.now(), input= full_text, accepted=-1)
@@ -124,6 +159,12 @@ def save_HTML(full_text, df, userid):
             continue
         # locate accepted words in text
         opt_idx = find_sub_list(option_text.split(), delta.split())
+        # if substring was not found (due to editing of accepted option), do not highlight
+        if len(opt_idx) == 0:
+            prev_row = row
+            idx = len(row["input"].split()) - 1
+            continue
+        # set option words to be highlighted
         start = idx + 1 + opt_idx[0]
         end = start + (opt_idx[1] - opt_idx[0])
         # set accepted words weight to 1 to highlight them
@@ -155,7 +196,13 @@ def save_HTML(full_text, df, userid):
     highlighted_text = ' '.join(highlighted_text)
 
     # save details table to html
-    df1 = df[["timestamp", "option1", "option2", "option3", "accepted"]][:-1]
+    if mode == 'prod':
+        df1 = df[["timestamp", "option1", "option2", "option3", "accepted"]][:-1]
+    else:
+        df1 = df.drop(columns=["input", "accepted", "timestamp", "userid"])
+        df1 = df1[:-1]
+        #[["timestamp", "option1", "option2", "option3", "accepted", "ground_truth"]][:-1]
+
     df1.to_html(USER_HTML_FILE)
 
     # add highlighted text to HTML
@@ -167,7 +214,7 @@ def save_HTML(full_text, df, userid):
 
 if __name__ == "__main__":
     # SET YOUR USER -------------
-    userid = 1000
+    userid = 2000
     # ---------------------------
     filename = SESSIONS_CSV
     # if used from cmd run for example: "python generate_user_session_csv.py {userid}"

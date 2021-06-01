@@ -4,13 +4,15 @@
     var selections = [];
     var suggestions = [];
     var canceled = false;
+    var start_time = new Date().getTime()
 
     // TODO: Configurable defaults
     const TAB_ENABLED = true;
-    const DEBOUNCE_DELAY_MILLIS = 1500;
+    const DEBOUNCE_DELAY_MILLIS = 1200;
     const MIN_TEXT_LENGTH = 100;
     const REPORT_SELECTIONS_ON_SUBMIT = true;
-    const ENDPOINT = "http://127.0.0.1:5000"
+    //const ENDPOINT = "http://127.0.0.1:5000"
+    const ENDPOINT = "http://so-srv1.iem.technion.ac.il:9000"
     const COMPLETION_MSG = "Thank you!\nText was submitted. Please return to system to complete the survey"
 
     function debounce(func, wait, immediate) {
@@ -52,7 +54,9 @@
                         userid: window.appUserId,
                         completionEnabled: window.completionEnabled,
                         text: text,
-                        timestamp: new Date().getTime(),
+                        // timestamp: new Date().getTime(),
+                        start_time: start_time,
+                        end_time: new Date().getTime(),
 //                        selections: selections,
                         suggestions: suggestions
                     })});
@@ -5557,10 +5561,12 @@
             if (text.length < MIN_TEXT_LENGTH) {
                 alert('Too short - at least ' + MIN_TEXT_LENGTH + ' characters required');
             } else {
+                
                 e.shared.postSubmission(a.editor.getText(0, Number.MAX_VALUE));
                 selections = [];
                 suggestions = [];
                 a.setText('');
+                start_time = new Date().getTime()
                 alert(COMPLETION_MSG);
             }
         };
