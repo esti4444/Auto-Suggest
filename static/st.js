@@ -11,9 +11,10 @@
     const DEBOUNCE_DELAY_MILLIS = 1200;
     const MIN_TEXT_LENGTH = 100;
     const REPORT_SELECTIONS_ON_SUBMIT = true;
-    //const ENDPOINT = "http://127.0.0.1:5000"
-    const ENDPOINT = "http://so-srv1.iem.technion.ac.il:9000"
-    const COMPLETION_MSG = "Thank you!\nText was submitted. Please return to system to complete the survey"
+    //const ENDPOINT = "http://127.0.0.1:5000";
+    const ENDPOINT = "http://so-srv1.iem.technion.ac.il:9000";
+    const COMPLETION_MSG = "Thank you!\nText was submitted. Please return to system to complete the survey";
+    const COMPLETION_LINK = "https://technioniit.eu.qualtrics.com/jfe/form/SV_8eqpOdQvlrv7nHE";
 
     function debounce(func, wait, immediate) {
         var timeout;
@@ -5567,7 +5568,11 @@
                 suggestions = [];
                 a.setText('');
                 start_time = new Date().getTime()
-                alert(COMPLETION_MSG);
+                if (window.confirm(COMPLETION_MSG))
+                {
+                    window.location.href=COMPLETION_LINK;
+                };
+//                alert(COMPLETION_MSG);
             }
         };
         const Q = async () => {
